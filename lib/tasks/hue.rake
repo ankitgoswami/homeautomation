@@ -8,7 +8,7 @@ namespace :hue do
     INTERNAL_SPEAKERS = "Internal Speakers"
     MUSIC_HOURS_WINDOW = [7, 23]
     ROOM_NAME = "Bathroom"
-    NEXT_LIGHT_RANGE = (18000..20000)
+    NEXT_LIGHT_RANGE = (17500..30000)
 
     p "Bathroom will sing!"
 
@@ -22,7 +22,7 @@ namespace :hue do
     next_trigger = MusicTrigger.new(player, NEXT_LIGHT_RANGE, :next, flip_range: true)
 
     light_monitor = DeviceMonitor.new(light, :on?, [play_trigger, pause_trigger])
-    sensor_monitor = DeviceMonitor.new(sensor, :lightlevel, [next_trigger], check_interval: 1)
+    sensor_monitor = DeviceMonitor.new(sensor, :lightlevel, [next_trigger])
 
     light_monitor_thread = Thread.new { light_monitor.run }
     sensor_monitor_thread = Thread.new { sensor_monitor.run }
