@@ -1,4 +1,4 @@
-class DeviceMonitor
+class StateMonitor
 
   def initialize(device, property, triggers, check_interval: 2)
     @device = device
@@ -10,7 +10,7 @@ class DeviceMonitor
   def run
     loop do
       sleep(@check_interval)
-      @device.refresh
+      @device.try(:refresh)
 
       device_value = @device.send(@property)
 

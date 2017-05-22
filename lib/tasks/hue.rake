@@ -7,41 +7,47 @@ namespace :hue do
     SPEAKER_NAME = "iLuv Syren"
     INTERNAL_SPEAKERS = "Internal Speakers"
     MUSIC_HOURS_WINDOW = [7, 23]
+    TIME_HOURS_WINDOW = [9,9]
     ROOM_NAME = "Bathroom"
     NEXT_LIGHT_RANGE = (17500..30000)
 
     p "Bathroom will sing!"
 
-    light = light_in_room(ROOM_NAME)
-    sensor = sensor(Hue::LightSensor)
+    begin
+      light = light_in_room(ROOM_NAME)
+      sensor = sensor(Hue::LightSensor)
 
-    player = SpotifyPlayer.new(PLAYLIST_URL, SPEAKER_NAME, INTERNAL_SPEAKERS)
+      player = SpotifyPlayer.new(PLAYLIST_URL, SPEAKER_NAME, INTERNAL_SPEAKERS)
+      time_player = TimePlayer.new(SPEAKER_NAME, INTERNAL_SPEAKERS)
 
-    play_trigger = MusicTrigger.new(player, [true], :play, operating_hours: MUSIC_HOURS_WINDOW)
-    pause_trigger = MusicTrigger.new(player, [false], :pause)
-    next_trigger = MusicTrigger.new(player, NEXT_LIGHT_RANGE, :next, flip_range: true)
+      play_trigger = MusicTrigger.new(player, [true], :play, operating_hours: MUSIC_HOURS_WINDOW)
+      pause_trigger = MusicTrigger.new(player, [false], :pause)
+      next_trigger = MusicTrigger.new(player, NEXT_LIGHT_RANGE, :next, flip_range: true)
+      time_trigger = TimeTrigger.new(time_player, :speak, operating_hours: TIME_HOURS_WINDOW)
 
-    light_monitor = DeviceMonitor.new(light, :on?, [play_trigger, pause_trigger])
-    sensor_monitor = DeviceMonitor.new(sensor, :lightlevel, [next_trigger])
+      monitors = [
+        StateMonitor.new(light, :on?, [play_trigger, pause_trigger]),
+        StateMonitor.new(sensor, :lightlevel, [next_trigger]),
+        StateMonitor.new(Time, :now, [time_trigger], check_interval: 10.minutes.to_i)
+      ]
 
-    light_monitor_thread = Thread.new { light_monitor.run }
-    sensor_monitor_thread = Thread.new { sensor_monitor.run }
+      monitor_threads = monitors.map { |monitor| Thread.new { monitor.run } }
 
-    light_monitor_thread.join
-    sensor_monitor_thread.join
+      monitor_threads.each { |thread| thread.join }
+    rescue SystemExit, Interrupt => e
+      p e.message
+      monitor_threads.each { |t| Thread.kill t }
+      player.pause
+    end
   end
 
   private
 
   def light_in_room(room_name)
     Hue::Client.new.lights.find{ |l| l.name.include?(room_name) }
-  rescue
-    nil
   end
 
   def sensor(type)
     Hue::Client.new.sensors.find{ |s| s.is_a?(type) }
-  rescue
-    nil
   end
 end

@@ -1,20 +1,19 @@
-class SpotifyPlayer
+class SpotifyPlayer < AudioPlayer
 
   def initialize(playlist, on_speaker, off_speaker)
     @playlist = playlist
-    @on_speaker = on_speaker
-    @off_speaker = off_speaker
+    super(on_speaker, off_speaker)
   end
 
   def play
-    return if playing?
+    return if playing? || invalid_output_device?
 
     set_audiodevice(@on_speaker)
     system("spotify play uri #{@playlist}")
   end
 
   def pause
-    return unless playing?
+    return if !playing? || invalid_output_device?
 
     system("spotify pause")
     sleep(4)
@@ -22,19 +21,12 @@ class SpotifyPlayer
   end
 
   def next
-    return unless playing?
+    return if !playing? || invalid_output_device?
 
     system("spotify next")
   end
 
   private
-
-  def set_audiodevice(device_name)
-    current_state = p `audiodevice output`
-    return if current_state.include?(device_name)
-
-    system("audiodevice output '#{device_name}'")
-  end
 
   def playing?
     current_state = p `spotify status`
